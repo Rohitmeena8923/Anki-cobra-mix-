@@ -164,7 +164,7 @@ back_button  = [[
 
 
 # ------------------------------------------------------------------------------- #
-captionn =("Welcome to DEVELOPER PRO Extractor Bot .\n\n THERE IS MANYS COMMAND :\n\n \n /appx - For All Appx\n /appxlist - For Appxlist\n /appxotp - For Appx OTP Login \n /adda - For Adda 247 \n /cp -  For Classplus \n /getapi - To Find Appx Api api \n /iq - For Study IQ \n /kd - For KD Campus\n /kgs - For Khan GS App\n /pw - For Physics Wallah \n /utkarsh - For Utkarsh " )
+captionn =("Welcome to DEVELOPER PRO Extractor Bot .\n\n THERE IS MANYS COMMAND :\n\n keyboard = [ \n [KB("📕 ALL APPX 📕", callback_data="/appx")],\n [KB("📕 APPX LIST 📕", callback_data="/appxlist")],\n\n [KB("📕 APPX Otp login 📕", callback_data="/appxotp")], \n [KB("📕 Adda 247 📕", callback_data="/adda")], \n [KB("📕 Classplus 📕", callback_data="/cp")],\n [KB("📕 FIND API 📕", callback_data="/getapi")], \n [KB("📕 Study IQ 📕", callback_data="/iq")], \n [KB("📕 KD CAMPUS 📕", callback_data="/kd")],\n [KB("📕 Khan GS 📕", callback_data="/kgs")],\n [KB("📕 PW 📕", callback_data="/pw")], \n [KB("📕 UTKARSH 📕", callback_data="/utkarsh")], " )
 
 
 @app.on_message(filters.command("start"))
