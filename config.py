@@ -37,7 +37,7 @@ OWNER_ID = int(os.environ.get("OWNER_ID", "6126688051"))
 
 SUDO_USERS = list(map(int, getenv("SUDO_USERS", "6126688051").split()))
 # ------------------------------------------------
-CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1002649968638"))
+CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-6126688051"))
 # ------------------------------------------------
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb+srv://wadiro6523:08AwfhhKRdQaS1i6@cluster0.krzxuop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 # -----------------------------------------------
