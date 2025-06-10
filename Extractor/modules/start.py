@@ -25,7 +25,29 @@ log_channel = CHANNEL_ID
 
 
 buttons = InlineKeyboardMarkup([[
+                   [
                     InlineKeyboardButton("𝐀𝐏𝐏𝐗 𝐀𝐏𝐏𝐒", callback_data="manual_"),
+                   ],[
+                       InlineKeyboardButton("👑 Aᴘᴘx", callback_data="appx_"),
+                    InlineKeyboardButton("👑 Aᴘᴘx Oᴛᴘ", callback_data="appxotp_")
+                ],
+                [
+                    InlineKeyboardButton("👑 CʟᴀssPʟᴜs", callback_data="classplus_"),
+                    InlineKeyboardButton("👑 Aᴅᴅᴀ 𝟸𝟺𝟽", callback_data="adda_")
+                ],
+                [
+                    InlineKeyboardButton("👑 Kʜᴀɴ Gs", callback_data="khan_"),   
+                    InlineKeyboardButton("👑 Pʜʏsɪᴄs Wᴀʟʟᴀʜ", callback_data="pw_")    
+                ],
+                [
+                    InlineKeyboardButton("👑 Sᴛᴜᴅʏ IQ", callback_data="iq_"),
+                    InlineKeyboardButton("👑 Kᴅ Cᴀᴍᴘᴜs", callback_data="kdlive_")         
+                ],
+                [
+                    InlineKeyboardButton("👑 Cᴀʀᴇᴇʀᴡɪʟʟ", callback_data="cw_"),   
+                    InlineKeyboardButton("👑 Uᴛᴋᴀʀsʜ", callback_data="utkarsh_")              
+                ],
+  
                   ]])
 modes_button = [[
                   InlineKeyboardButton("𝐂𝐔𝐒𝐓𝐎𝐌", callback_data="custom_"),
