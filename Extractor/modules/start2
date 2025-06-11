@@ -33,8 +33,7 @@ modes_button = [[
                 ],[
                   InlineKeyboardButton("𝐁𝐀𝐂𝐊", callback_data="home_")
                 ]]
-LoGiN_button = [              
-    [
+LoGiN_button = [[            
         InlineKeyboardButton("KGS", callback_data="kgs_"),
     ],[
         InlineKeyboardButton("PHYSIC WALHA", callback_data="pw_"),
@@ -53,7 +52,7 @@ LoGiN_button = [
         InlineKeyboardButton("Appx list", callback_data="appxlist_"),
         InlineKeyboardButton("Appx", callback_data="appx"),
         InlineKeyboardButton("STRANGER", callback_data="https://i.ibb.co/q3SX4gjQ/STRANGER-BOY.jpg"),
-    ],
+    ]]
 
 custom_button = [[
                   InlineKeyboardButton("𝐀𝐩𝐩𝐞𝐱 𝐕𝟐", callback_data="v2_"),
