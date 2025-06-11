@@ -33,7 +33,27 @@ modes_button = [[
                 ],[
                   InlineKeyboardButton("𝐁𝐀𝐂𝐊", callback_data="home_")
                 ]]
-
+LoGiN_button = [              
+    [
+        InlineKeyboardButton("KGS", callback_data="kgs_"),
+    ],[
+        InlineKeyboardButton("PHYSIC WALHA", callback_data="pw_"),
+        InlineKeyboardButton("UTKARSH", callback_data="utkarsh_"),
+    ],[
+        InlineKeyboardButton("KD Campus", callback_data="kd_"),
+    ],[
+        InlineKeyboardButton("STUDY IQ", callback_data="iq_"),
+        InlineKeyboardButton("Get Api", callback_data="getapi_"),
+    ],[
+        InlineKeyboardButton("Classplus", callback_data="cp_"),
+    ],[
+        InlineKeyboardButton("Adda 24/7", callback_data="adda_"),
+        InlineKeyboardButton("Appx otp", callback_data="appxotp"),
+    ],[
+        InlineKeyboardButton("Appx list", callback_data="appxlist_"),
+        InlineKeyboardButton("Appx", callback_data="appx"),
+        InlineKeyboardButton("STRANGER", callback_data="https://i.ibb.co/q3SX4gjQ/STRANGER-BOY.jpg"),
+    ],
 
 custom_button = [[
                   InlineKeyboardButton("𝐀𝐩𝐩𝐞𝐱 𝐕𝟐", callback_data="v2_"),
