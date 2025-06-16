@@ -3,202 +3,275 @@ import requests
 import threading
 import asyncio
 import cloudscraper
+import time
+from pyromod import listen
+from pyrogram import Client
 from pyrogram import filters
+from pyrogram.types import Message
+from config import CHANNEL_ID, CHANNEL_ID2, THUMB_URL,BOT_TEXT
 from Extractor import app
-from config import CHANNEL_ID
-log_channel = CHANNEL_ID
-
 
 
 requests = cloudscraper.create_scraper()
-
 ACCOUNT_ID = "6206459123001"
-BCOV_POLICY = "BCpkADawqM1474MvKwYlMRZNBPoqkJY-UWm7zE1U769d5r5kqTjG0v8L-THXuVZtdIQJpfMPB37L_VJQxTKeNeLO2Eac_yMywEgyV9GjFDQ2LTiT4FEiHhKAUvdbx9ku6fGnQKSMB8J5uIDd"
 bc_url = f"https://edge.api.brightcove.com/playback/v1/accounts/{ACCOUNT_ID}/videos/"
-bc_hdr = {"BCOV-POLICY": BCOV_POLICY}
 
 
+# Download thumbnail
+def download_thumbnail(url):
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            # Save in temp directory
+            thumb_path = "thumb_temp.jpg"
+            with open(thumb_path, "wb") as f:
+                f.write(response.content)
+            return thumb_path
+        return None
+    except Exception:
+        return None
 
+# -------------------- Downloader Function ---------------------
 async def careerdl(app, message, headers, raw_text2, token, raw_text3, prog, name):
     num_id = raw_text3.split('&')
-    fuck = ""
+    result_text = ""
+    total_videos = 0
+    total_notes = 0
+    total_topics = len(num_id)
+    current_topic = 0
+    start_time = time.time()
 
-    for x in range(len(num_id)):
-        id_text = num_id[x]
+    # Download thumbnail at start
+    thumb_path = download_thumbnail(THUMB_URL)
 
+    for id_text in num_id:
         try:
-            # Video Details
-            details_url = f"https://elearn.crwilladmin.com/api/v8/batch-detail/{raw_text2}?topicId={id_text}"
+            current_topic += 1
+            details_url = f"https://elearn.crwilladmin.com/api/v9/batch-detail/{raw_text2}?topicId={id_text}"
             response = requests.get(details_url, headers=headers)
             data = response.json()
+            classes = data["data"]["class_list"]["classes"]
+            classes.reverse()
+            
+            # Get topic name
+            topic_url = f"https://elearn.crwilladmin.com/api/v9/batch-topic/{raw_text2}?type=class"
+            topic_data = requests.get(topic_url, headers=headers).json()["data"]
+            topics = topic_data["batch_topic"]
+            current_topic_name = next((topic["topicName"] for topic in topics if str(topic["id"]) == id_text), "Unknown Topic")
 
-            details_list = data["data"]["class_list"]
-            batch_class = details_list["classes"]
-            batch_class.reverse()
+            # Calculate time metrics
+            elapsed_time = time.time() - start_time
+            avg_time_per_topic = elapsed_time / current_topic
+            remaining_topics = total_topics - current_topic
+            eta = avg_time_per_topic * remaining_topics
+            
+            # Format times
+            elapsed_str = f"{int(elapsed_time//60)}m {int(elapsed_time%60)}s"
+            eta_str = f"{int(eta//60)}m {int(eta%60)}s"
 
-            for video_data in batch_class:
+            # Update progress message
+            progress_msg = (
+                "🔄 <b>Processing Large Batch</b>\n"
+                f"├─ Subject: {current_topic}/{total_topics}\n"
+                f"├─ Name: <code>{current_topic_name}</code>\n"
+                f"├─ Topics: {current_topic}/{total_topics}\n"
+                f"├─ Links: {total_videos + total_notes}\n"
+                f"├─ Time: {elapsed_str}\n"
+                f"└─ ETA: {eta_str}"
+            )
+            await prog.edit_text(progress_msg)
+
+            for video_data in classes:
                 vid_id = video_data['id']
                 lesson_name = video_data['lessonName']
                 lesson_ext = video_data['lessonExt']
 
+                detail_url = f"https://elearn.crwilladmin.com/api/v9/class-detail/{vid_id}"
+                lesson_url = requests.get(detail_url, headers=headers).json()['data']['class_detail']['lessonUrl']
+
                 if lesson_ext == 'brightcove':
-                    lesson_url = requests.get(
-                        f"https://elearn.crwilladmin.com/api/v8/class-detail/{vid_id}", 
-                        headers=headers
-                    ).json()['data']['class_detail']['lessonUrl']
-
                     video_link = f"{bc_url}{lesson_url}/master.m3u8?bcov_auth={token}"
-                    fuck += f"{lesson_name}: {video_link}\n"
-                
+                    total_videos += 1
                 elif lesson_ext == 'youtube':
-                    lesson_url = requests.get(
-                        f"https://elearn.crwilladmin.com/api/v8/class-detail/{vid_id}", 
-                        headers=headers
-                    ).json()['data']['class_detail']['lessonUrl']
-                    
                     video_link = f"https://www.youtube.com/embed/{lesson_url}"
-                    fuck += f"{lesson_name}: {video_link}\n"
+                    total_videos += 1
+                else:
+                    continue
 
-            # Notes Details
-            notes_url = f"https://elearn.crwilladmin.com/api/v8/batch-topic/{raw_text2}?type=notes"
+                result_text += f"{lesson_name}: {video_link}\n"
+
+            # Notes
+            notes_url = f"https://elearn.crwilladmin.com/api/v9/batch-topic/{raw_text2}?type=notes"
             notes_resp = requests.get(notes_url, headers=headers).json()
-
             if 'data' in notes_resp and 'batch_topic' in notes_resp['data']:
-                notes_topics = notes_resp['data']['batch_topic']
-
-                for topic in notes_topics:
+                for topic in notes_resp['data']['batch_topic']:
                     topic_id = topic['id']
-                    notes_topic_url = f"https://elearn.crwilladmin.com/api/v8/batch-notes/{raw_text2}?topicId={topic_id}"
-                    notes_topic_resp = requests.get(notes_topic_url, headers=headers).json()
+                    notes_topic_url = f"https://elearn.crwilladmin.com/api/v9/batch-notes/{raw_text2}?topicId={topic_id}"
+                    notes_data = requests.get(notes_topic_url, headers=headers).json()
 
-                    if 'data' in notes_topic_resp and 'notesDetails' in notes_topic_resp['data']:
-                        notes_details = notes_topic_resp['data']['notesDetails']
-
-                        for note_detail in reversed(notes_details):
-                            doc_title = note_detail.get('docTitle', '')
-                            doc_url = note_detail.get('docUrl', '').replace(' ', '%20')
-                            
-                            if f"{doc_title}: {doc_url}\n" not in fuck:
-                                fuck += f"{doc_title}: {doc_url}\n"
+                    for note in reversed(notes_data.get('data', {}).get('notesDetails', [])):
+                        doc_title = note.get('docTitle', '')
+                        doc_url = note.get('docUrl', '').replace(' ', '%20')
+                        line = f"{doc_title}: {doc_url}\n"
+                        if line not in result_text:
+                            result_text += line
+                            total_notes += 1
 
         except Exception as e:
-            print(f"Error processing topic ID {id_text}: {e}")
-            
-    if '/' in name:
-        name = name.replace("/", "")
-    
-    file_name = f"{name}.txt"
-    with open(file_name, 'w') as f:
-        f.write(fuck)
+            error_msg = (
+                "❌ <b>An error occurred during extraction</b>\n\n"
+                f"Error details: <code>{str(e)}</code>\n\n"
+                "Please try again or contact support."
+            )
+            await message.reply(error_msg)
 
-  
+    file_name = f"{name.replace('/', '')}.txt"
+    with open(file_name, 'w', encoding='utf-8') as f:
+        f.write(result_text)
+
+    import datetime
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
     
-    c_txt = f"**App Name: CareerWill \n Batch Name: `{name}'"
-    await app.send_document(
-        chat_id=message.chat.id, 
-        document=file_name, 
-        caption=c_txt
+    caption = (
+        "🎓 <b>COURSE EXTRACTED</b> 🎓\n\n"
+        "📱 <b>APP:</b> CareerWill\n"
+        f"📚 <b>BATCH:</b> {name}\n"
+        f"📅 <b>DATE:</b> {current_date} IST\n\n"
+        "📊 <b>CONTENT STATS</b>\n"
+        f"├─ 🎬 Videos: {total_videos}\n"
+        f"├─ 📄 PDFs/Notes: {total_notes}\n"
+        f"└─ 📦 Total Links: {total_videos + total_notes}\n\n"
+        f"🚀 <b>Extracted by:</b> @{(await app.get_me()).username}\n\n"
+        f"<code>╾───• {BOT_TEXT} •───╼</code>"
     )
-    await app.send_document(log_channel, document=file_name, caption=c_txt)
-    await prog.delete()
-    os.remove(f"{file_name}")
 
-
-@app.on_message(filters.command(["maakichut"]))
-async def career_will(app, message):
     try:
-        input1 = await app.ask(message.chat.id, text="<blockquote>**Send ID & Password in this manner otherwise bot will not respond.\n\nSend like this:-  ID*Password\n\n OR Send Your Token**</blockquote>")
-        login_url = "https://elearn.crwilladmin.com/api/v8/login-other"
-        raw_text = input1.text
-     
+        # Send to user with thumbnail
+        await app.send_document(
+            message.chat.id,
+            document=file_name,
+            caption=caption,
+            thumb=thumb_path if thumb_path else None
+        )
+        
+        # Send to channel with thumbnail
+        await app.send_document(
+            CHANNEL_ID,
+            document=file_name,
+            caption=caption,
+            thumb=thumb_path if thumb_path else None
+        )
+    finally:
+        # Cleanup
+        await prog.delete()
+        os.remove(file_name)
+        if thumb_path and os.path.exists(thumb_path):
+            os.remove(thumb_path)
+
+# -------------------- Main Command Handler ---------------------
+@app.on_message(filters.command("cw") & filters.private)
+async def career_will(app: Client, message: Message):
+    try:
+        welcome_msg = (
+            "🔹 <b>CAREERWILL EXTRACTOR</b> 🔹\n\n"
+            "Send <b>ID & Password</b> in this format: <code>ID*Password</code>\n\n"
+            "<b>Example:</b>\n"
+            "- ID*Pass: <code>6969696969*password123</code>\n"
+            "- Token: <code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</code>"
+        )
+        input1 = await app.ask(message.chat.id, welcome_msg)
+        raw_text = input1.text.strip()
+
         if "*" in raw_text:
-            headers =  {
+            email, password = raw_text.split("*")
+            headers = {
                 "Host": "elearn.crwilladmin.com",
-                "appver": "101",
+                "appver": "107",
                 "apptype": "android",
                 "cwkey": "+HwN3zs4tPU0p8BpOG5ZlXIU6MaWQmnMHXMJLLFcJ5m4kWqLXGLpsp8+2ydtILXy",
                 "content-type": "application/json; charset=UTF-8",
                 "accept-encoding": "gzip",
                 "user-agent": "okhttp/5.0.0-alpha.2"
             }
-
-            email, password = raw_text.split("*")
-            data =  {
+            data = {
                 "deviceType": "android",
                 "password": password,
                 "deviceModel": "Xiaomi M2007J20CI",
                 "deviceVersion": "Q(Android 10.0)",
                 "email": email,
-                "deviceIMEI": "d57adbd8a7b8u9i9",  # You should replace this with an actual IMEI if needed
-                "deviceToken": "c8HzsrndRB6dMaOuKW2qMS:APA91bHu4YCP4rqhpN3ZnLjzL3LuLljxXua2P2aUXfIS4nLeT4LnfwWY6MiJJrG9XWdBUIfuA6GIXBPIRTGZsDyripIXoV1CyP3kT8GKuWHgGVn0DFRDEnXgAIAmaCE6acT3oussy2"  # Replace with an actual device token if needed
+                "deviceIMEI": "d57adbd8a7b8u9i9",
+                "deviceToken": "fake_device_token"
             }
 
-            response = requests.post("https://elearn.crwilladmin.com/api/v8/login-other", headers=headers, json=data)
-            
-            pk = response.text
-            response.raise_for_status()  # Raise an error if the request was unsuccessful
+            login_url = "https://elearn.crwilladmin.com/api/v9/login-other"
+            response = requests.post(login_url, headers=headers, json=data)
             token = response.json()["data"]["token"]
-            await app.send_message(log_channel, pk)
-            await message.reply_text(f"<blockquote>**Login Successful**\n\n`{token}`</blockquote>")
+            success_msg = (
+                "✅ <b>CareerWill Login Successful</b>\n\n"
+                f"🆔 <b>Credentials:</b> <code>{email}*{password}</code>"
+            )
+            await message.reply_text(success_msg)
         else:
             token = raw_text
-    except Exception as e:
-        await message.reply_text(f"An error occurred during login: {e}")
-        return
 
-    headers = {
-                "Host": "elearn.crwilladmin.com",
-                "appver": "101",
-                "apptype": "android",
-        "usertype": "2",
-        "token": token,
-                "cwkey": "+HwN3zs4tPU0p8BpOG5ZlXIU6MaWQmnMHXMJLLFcJ5m4kWqLXGLpsp8+2ydtILXy",
-                "content-type": "application/json; charset=UTF-8",
-                "accept-encoding": "gzip",
-                "user-agent": "okhttp/5.0.0-alpha.2"
-    }
+        # Fetch Batches
+        headers = {
+            "Host": "elearn.crwilladmin.com",
+            "appver": "107",
+            "apptype": "android",
+            "usertype": "2",
+            "token": token,
+            "cwkey": "+HwN3zs4tPU0p8BpOG5ZlXIU6MaWQmnMHXMJLLFcJ5m4kWqLXGLpsp8+2ydtILXy",
+            "content-type": "application/json; charset=UTF-8",
+            "accept-encoding": "gzip",
+            "user-agent": "okhttp/5.0.0-alpha.2"
+        }
 
-    await input1.delete(True)
-    batch_url = "https://elearn.crwilladmin.com/api/v8/my-batch"
-    response = requests.get(batch_url, headers=headers)
-    
-    data = response.json()
-    topicid = data["data"]["batchData"]
-    FFF = "**BATCH-ID     -     BATCH NAME**\n\n"
-    for data in topicid:
-        FFF += f"`{data['id']}`     -    **{data['batchName']}**\n\n"
-        dl=(f"<blockquote>**CAREERWILL LOGIN SUCCESS**\n\n'{raw_text}'\n\n`{token}`\n{FFF}</blockquote>")
+        batch_url = "https://elearn.crwilladmin.com/api/v9/my-batch"
+        response = requests.get(batch_url, headers=headers)
+        
+        batches = response.json()["data"]["batchData"]
+        msg = "📚 <b>Available Batches</b>\n\n"
+        for b in batches:
+            msg += f"<code>{b['id']}</code> - <b>{b['batchName']}</b>\n"
 
-    await message.reply_text(f"<blockquote>**HERE IS YOUR BATCH**\n\n{FFF}</blockquote>")
-    input2 = await app.ask(message.chat.id, text="<blockquote>**Now send the Batch ID to Download**</blockquote>")
-    raw_text2 = input2.text
-    await app.send_message(log_channel, dl)
-    topic_url = "https://elearn.crwilladmin.com/api/v8/batch-topic/" + raw_text2 + "?type=class"
-    response = requests.get(topic_url, headers=headers)
-    topic_data = response.json()
-    batch_data = topic_data['data']['batch_topic']
-    name = topic_data["data"]["batch_detail"]["name"]
+        await message.reply_text(msg)
+        input2 = await app.ask(message.chat.id, "<b>Send the Batch ID to download:</b>")
+        raw_text2 = input2.text.strip()
 
-    BBB = "**TOPIC-ID - TOPIC**\n\n"
-    id_num = ""
-    for data in batch_data:
-        topic_id = data["id"]
-        topic_name = data["topicName"]
-        id_num += f"{topic_id}&"
-        BBB += f"`{topic_id}` -  **{topic_name}** \n\n"
+        # Fetch Topics
+        topic_url = f"https://elearn.crwilladmin.com/api/v9/batch-topic/{raw_text2}?type=class"
+        topic_data = requests.get(topic_url, headers=headers).json()["data"]
+        topics = topic_data["batch_topic"]
+        batch_name = topic_data["batch_detail"]["name"]
+        id_list = ""
 
-    await message.reply_text(f"<blockquote>**Batches details of {name}**\n\n{BBB}</blockquote>")
-    input3 = await app.ask(message.chat.id, text=f"<blockquote>Now send the **Topic IDs** to Download\n\nSend like this **1&2&3&4** so on\nor copy paste or edit **below ids** according to you :\n\n**Enter this to download full batch :-**\n`{id_num}`</blockquote>")
-    raw_text3 = input3.text
+        topic_list = "📑 <b>Available Topics</b>\n\n"
+        for topic in topics:
+            topic_list += f"<code>{topic['id']}</code> - <b>{topic['topicName']}</b>\n"
+            id_list += f"{topic['id']}&"
 
-    prog = await message.reply_text("<blockquote>**Extracting Videos Links Please Wait  ðŸ“¥ **</blockquote>")
+        await message.reply_text(topic_list)
+        input3 = await app.ask(message.chat.id, 
+            "📝 <b>Send topic IDs to download</b>\n\n"
+            f"Format: <code>1&2&3</code>\n"
+            f"All Topics: <code>{id_list}</code>"
+        )
+        raw_text3 = input3.text.strip()
 
-    try:
-        thread = threading.Thread(target=lambda: asyncio.run(careerdl(app, message, headers, raw_text2, token, raw_text3, prog, name)))
-        thread.start()
+        prog = await message.reply(
+            "🔄 <b>Processing Content</b>\n\n"
+            "├─ Status: Extracting content\n"
+            "└─ Please wait..."
+        )
+        threading.Thread(target=lambda: asyncio.run(careerdl(app, message, headers, raw_text2, token, raw_text3, prog, batch_name))).start()
 
     except Exception as e:
-        await message.reply_text(str(e))
+        error_msg = (
+            "❌ <b>An error occurred</b>\n\n"
+            f"Error details: <code>{str(e)}</code>\n\n"
+            "Please try again or contact support."
+        )
+        await message.reply(error_msg)
 
 
-    
