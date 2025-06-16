@@ -18,4 +18,14 @@ async def sumit_boot():
 
 
 if __name__ == "__main__":
-    loop.run_until_complete(sumit_boot())
+    try:
+        loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        print("Interrupted by user.")
+    finally:
+        pending = asyncio.all_tasks(loop)
+        for task in pending:
+            task.cancel()
+        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+        loop.close()
+        print("Loop closed.")
