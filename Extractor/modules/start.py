@@ -11,6 +11,14 @@ from Extractor.modules.exampur import exampur_txt
 from Extractor.modules.appex_v3 import appex_v3_txt
 from Extractor.modules.khan import khan_login
 from Extractor.modules.kdlive import kdlive
+from Extractor.modules.exampur import exampur_txt
+from Extractor.modules.appex_v1 import api_v1
+from Extractor.modules.rg_vikramjeet import rgvikram_txt
+from Extractor.modules.careerwill import career_will
+from Extractor.modules.mypathshala import my_pathshala_login
+from Extractor.modules.freecp import *
+from Extractor.modules.freeappx import *
+from Extractor.modules.freepw import *
 from Extractor.modules.pw import  pw_login
 from Extractor.modules.careerwill import career_will
 from Extractor.modules.getappxotp import send_otp
