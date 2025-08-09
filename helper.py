@@ -19,7 +19,11 @@ def duration(filename):
                              "default=noprint_wrappers=1:nokey=1", filename],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
-    return float(result.stdout)
+    output = result.stdout.decode().strip()
+    try:
+        return float(output)
+    except Exception:
+        return 0.0
     
 def exec(cmd):
         process = subprocess.run(cmd, stdout=subprocess.PIPE,stderr=subprocess.PIPE)
@@ -165,18 +169,26 @@ async def download_video(url,cmd, name):
 
         return name
     except FileNotFoundError as exc:
-        return os.path.isfile.splitext[0] + "." + "mp4"
+        base, _ = os.path.splitext(name)
+        return base + ".mp4"
+
+# Simple progress callback to avoid NameError if external progress_bar is unavailable
+# Signature matches Pyrogram's expectations when passing progress_args=(reply, start_time)
+
+def progress_bar(current, total, reply, start_time):
+    # Intentionally minimal to avoid blocking; extend as needed
+    return
 
 async def send_doc(bot: Client, m: Message,cc,ka,cc1,prog,count,name):
     reply = await m.reply_text(f"Uploading - `{name}`")
-    time.sleep(1)
+    await asyncio.sleep(1)
     start_time = time.time()
     await m.reply_document(ka,caption=cc1)
     count+=1
     await reply.delete (True)
-    time.sleep(1)
+    await asyncio.sleep(1)
     os.remove(ka)
-    time.sleep(3) 
+    await asyncio.sleep(3)
 
 async def send_vid(bot: Client, m: Message,cc,filename,thumb,name,prog):
     

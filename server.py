@@ -1,7 +1,8 @@
-import aiohttp, cloudscraper, requests, re, asyncio, random
+import aiohttp, cloudscraper, requests, re, asyncio, random, logging, os
 from concurrent.futures import ThreadPoolExecutor
 executor = ThreadPoolExecutor()
 scraper = cloudscraper.create_scraper()
+LOGGER = logging.getLogger(__name__)
 
 async def fetch_aio(url, headers=None, params=None):
     async with aiohttp.ClientSession() as session:
@@ -43,9 +44,13 @@ def direct_get_json(url):
 used_tokens = []
 async def get_random_token():
     global used_tokens
-    if len(used_tokens) == len(appx_token.APPX):
-        used_tokens = []  # Reset after using all tokens
-    available_tokens = list(set(appx_token.APPX) - set(used_tokens))
+    tokens_csv = os.environ.get("APPX_TOKENS", "").strip()
+    tokens = [t for t in (token.strip() for token in tokens_csv.split(",")) if t]
+    if not tokens:
+        raise ValueError("APPX_TOKENS environment variable is not set or empty")
+    if len(used_tokens) >= len(tokens):
+        used_tokens = []
+    available_tokens = list(set(tokens) - set(used_tokens)) or tokens
     token = random.choice(available_tokens)
     used_tokens.append(token)
     return token

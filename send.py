@@ -1,10 +1,13 @@
 import requests
-import datetime, pytz, re, aiofiles, subprocess, os, base64, io
+import datetime, pytz, re, aiofiles, subprocess, os, base64, io, logging
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from base64 import b64encode
 from Extractor import app
+from config import PREMIUM_LOGS
 import server
+
+LOGGER = logging.getLogger(__name__)
 thumb = "thumb.jpg" if subprocess.getstatusoutput("wget 'https://i.ibb.co/F4fYbhYx/STRANGER-BOY.jpg' -O 'thumb.jpg'")[0] == 0 else None
 
 async def without_login(bot, user_id, m, all_urls, start_time, bname, batch_id, app_name, price=None, start_date=None, imageUrl=None):
@@ -18,7 +21,7 @@ async def without_login(bot, user_id, m, all_urls, start_time, bname, batch_id, 
     user = await app.get_users(user_id)
     contact_link = f"[{user.first_name}](tg://openmessage?user_id={user_id})"
     all_text = "\n".join(all_urls)
-    video_count = len(re.findall(r'\.(.m3u8|.mpd|.mp4)', all_text))
+    video_count = len(re.findall(r'\.(m3u8|mpd|mp4)', all_text))
     pdf_count = len(re.findall(r'\.pdf', all_text))
     drm_video_count = len(re.findall(r'\.(videoid|mpd|testbook)', all_text))
     enc_pdf_count = len(re.findall(r'\.pdf\*', all_text))
@@ -27,10 +30,15 @@ async def without_login(bot, user_id, m, all_urls, start_time, bname, batch_id, 
         await f.writelines([url + '\n' for url in all_urls])
     await file_name_encr(all_urls, file_name_enc)
     await m.reply_document(document=file_name_enc, thumb=thumb, caption=caption)
-    await app.send_document(chat_id=Config.TXT_LOG, document=file_path, caption=caption, thumb=thumb)
-    await db.db_instance.save_backup_file(user_id, caption, file_name_enc)
-    if await db.db_instance.get_user_types(user_id) == 'P':
-        await db.db_instance.increment_daily_usage(user_id)
+    await app.send_document(chat_id=PREMIUM_LOGS, document=file_path, caption=caption, thumb=thumb)
+    try:
+        # Optional database persistence if db module is available
+        import db  # type: ignore
+        await db.db_instance.save_backup_file(user_id, caption, file_name_enc)
+        if await db.db_instance.get_user_types(user_id) == 'P':
+            await db.db_instance.increment_daily_usage(user_id)
+    except Exception as e:
+        LOGGER.info(f"DB logging skipped or failed: {e}")
     os.remove(file_path)
     os.remove(file_name_enc)
 
@@ -122,7 +130,8 @@ async def login_free(app, user_id, m, all_urls, start_time, bname, batch_id, app
     
     
     os.remove(file_path)
-    os.remove(file_name_enc)
+    if os.path.exists(file_name_enc):
+        os.remove(file_name_enc)
 
 
 
@@ -136,13 +145,15 @@ async def extract_urls(file, file_path, all_urls):
     for line in check:
         if "master://:" in line:
             enc_url = line.split("master://:", 1)[1].strip()
-        try:
-            decrypted_url = await dec_url(enc_url)
-            decrypted_line = line.replace(enc_url, decrypted_url).replace(': master://:', '')
-            all_urls.append(decrypted_line)
-        except Exception as e:
+            try:
+                decrypted_url = await dec_url(enc_url)
+                decrypted_line = line.replace(enc_url, decrypted_url).replace(': master://:', '')
+                all_urls.append(decrypted_line)
+            except Exception as e:
+                all_urls.append(line)
+                LOGGER.info(f"Error decrypting URL: {e}")
+        else:
             all_urls.append(line)
-            LOGGER.info(f"Error decrypting URL: {e}")
 
 async def dec_url(enc_url):
     key = b'%@!@**!^*!1#$(@^'
