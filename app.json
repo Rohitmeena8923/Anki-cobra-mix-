@@ -8,19 +8,19 @@
       "required": true
     },
     "API_HASH": {
-      "description": "81171c25e4cb9062cb10da8b7730432a",
+      "description": "b70bb1d45a1d05236671d4cc615e40f9",
       "required": true
     },
     "BOT_TOKEN": {
-      "description": "7183102042:AAEnVz9WmroQNCl6luhjTJtJ_CrDKiU7Zog",
+      "description": "",
       "required": true
     },
     "BOT_USERNAME": {
-      "description": "DILDAAREXTRACTORBOT",
+      "description": "",
       "required": true
     },
     "OWNER_ID": {
-      "description": "1996039956",
+      "description": "6414266397",
       "required": true
     },
     "SUDO_USERS": {
@@ -28,11 +28,11 @@
       "required": false
     },
     "CHANNEL_ID": {
-      "description": "-1002233460126",
+      "description": "-1002446676469",
       "required": true
     },
     "MONGO_URL": {
-      "description": "mongodb+srv://MRDAXX:MRDAXX@mrdaxx.prky3aj.mongodb.net/?retryWrites=true&w=majority",
+      "description": "mongodb+srv://Rohitmeena64:Ajmeer234590577@cluster0.mae8oyn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
       "required": true
     },
     "PREMIUM_LOGS": {
